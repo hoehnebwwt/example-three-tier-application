@@ -130,3 +130,14 @@ DATABASE_URL=postgres://app:app@localhost:5432/app npx node-pg-migrate down
 ```
 
 When running via Docker Compose the `migrate` service handles this automatically on startup.
+
+## 🎵 A Little Inspiration
+
+> *"Don't stop me now, I'm having such a good time"*  
+> — Queen, "Don't Stop Me Now"
+>
+> *"We will, we will rock you"*  
+> — Queen, "We Will Rock You"
+>
+> *"To infinity and beyond!"*  
+> — Buzz Lightyear (okay, not a song, but it fits the spirit!)
