@@ -1,6 +1,6 @@
 # example-three-tier-application
 
-A reference implementation of a three-tier web application: a Next.js frontend, an Express REST API, and a PostgreSQL database. It runs locally with Docker Compose and deploys to Google Cloud Platform (Cloud Run + Cloud SQL) via Terraform.
+Une implémentation de référence d'une application web à trois niveaux : un frontend Next.js, une API REST Express et une base de données PostgreSQL. Elle s'exécute localement avec Docker Compose et se déploie sur Google Cloud Platform (Cloud Run + Cloud SQL) via Terraform.
 
 ## Architecture
 
