@@ -1,6 +1,6 @@
 # Working with AI Agents on this repo
 
-This guide covers how to use [Claude Code](https://claude.ai/code) effectively with this codebase, and general patterns for AI-assisted development on three-tier applications.
+This guide covers how to use AI agents effectively with this codebase, and general patterns for AI-assisted development on three-tier applications.
 
 ## Getting started with Claude Code
 
@@ -13,6 +13,145 @@ claude
 ```
 
 Claude Code reads the project structure automatically. It works best when you give it specific, scoped tasks rather than broad ones.
+
+## Working with Devin
+
+Devin is an autonomous AI agent that can handle complex, multi-step tasks across the entire codebase. Here's how to work effectively with Devin on this three-tier application:
+
+### Starting a Devin session
+
+When you open this repository in Devin, it will automatically:
+- Analyze the project structure (frontend, API, database, infrastructure)
+- Understand the Docker Compose setup
+- Identify the tech stack (Next.js, Express, PostgreSQL, Terraform)
+
+### Effective prompts for Devin
+
+Devin excels at end-to-end tasks that span multiple files and services. Give it clear acceptance criteria:
+
+#### Full-stack feature development
+
+```
+Add a "priority" field to tasks:
+1. Create a database migration that adds a priority column (integer, default 0) to the tasks table
+2. Update the API to accept priority in POST /tasks and return it in GET /tasks and PATCH /tasks/:id
+3. Update the frontend to show a priority selector when creating/editing tasks
+4. Test the full flow end-to-end with docker compose up
+
+Acceptance criteria:
+- Migration applies cleanly
+- API returns 422 if priority is not an integer
+- Frontend displays priority in the task list
+- Can create and update tasks with different priorities
+```
+
+#### Bug fixes across tiers
+
+```
+The task list doesn't update immediately after creating a new task. Debug and fix:
+1. Check the frontend's POST /tasks call and response handling
+2. Verify the API returns the created task with all fields
+3. Check if there's a caching issue in the Next.js frontend
+4. Test with docker compose up and verify the fix works
+
+Acceptance criteria:
+- New tasks appear in the list immediately after creation
+- No console errors in the browser
+- No errors in the API logs
+```
+
+#### Infrastructure and deployment
+
+```
+Set up a GitHub Actions workflow that:
+1. Builds and pushes Docker images to GCP Container Registry
+2. Runs the test suite
+3. Deploys to Cloud Run using the Terraform configuration
+
+Acceptance criteria:
+- Workflow triggers on push to main
+- Images are tagged with the git commit SHA
+- Deployment only happens if tests pass
+- The workflow file is in .github/workflows/
+```
+
+#### Database schema changes
+
+```
+Add user authentication to the app:
+1. Create migrations for a users table and update tasks to have a user_id foreign key
+2. Add login/signup endpoints to the API
+3. Update the frontend to show a login page and store the auth token
+4. Protect the /tasks endpoints to only return tasks for the logged-in user
+
+Acceptance criteria:
+- Migrations are append-only (no edits to existing files)
+- API returns 401 for unauthenticated requests
+- Frontend redirects to login if not authenticated
+- Each user only sees their own tasks
+- docker compose up works end-to-end
+```
+
+### Tips for working with Devin on this repo
+
+#### 1. Provide the full context upfront
+Instead of:
+> "Add a delete button"
+
+Try:
+> "Add a DELETE /tasks/:id endpoint to the API that returns 404 if the task doesn't exist. Wire it up to a delete button in the frontend that shows a confirmation dialog. Test it with docker compose up."
+
+Devin can explore the codebase, but explicit requirements prevent misunderstandings.
+
+#### 2. Ask Devin to verify its work
+After Devin makes changes, ask it to:
+```
+Run docker compose up and verify:
+1. The app starts without errors
+2. You can create a task
+3. You can update a task
+4. The new feature works as expected
+```
+
+#### 3. Use Devin for refactoring and cleanup
+Devin can handle large refactors across multiple files:
+```
+Refactor the API to use async/await instead of .then() chains. 
+Ensure all error handling still works and the app runs without errors.
+```
+
+#### 4. Let Devin write tests
+```
+Write integration tests for the POST /tasks endpoint that verify:
+1. A valid task is created and returned with an id
+2. Missing title returns 422
+3. Title longer than 200 characters returns 422
+4. The task appears in GET /tasks
+```
+
+#### 5. Ask for explanations before risky changes
+```
+Before making any changes, explain your plan for:
+1. What files you'll modify
+2. What migrations you'll create
+3. How you'll test the changes
+4. Any breaking changes or data loss risks
+```
+
+### Devin's strengths on this codebase
+
+- **Multi-file coordination** — Devin can update the database schema, API, and frontend in one session
+- **Docker debugging** — Devin can run `docker compose up`, read logs, and fix issues
+- **Terraform changes** — Devin can modify infrastructure code and explain the impact
+- **End-to-end testing** — Devin can verify changes work across all three tiers
+- **Migration safety** — Devin understands the append-only migration pattern and won't break it
+
+### Devin's limitations on this repo
+
+- **No network access** — Devin can't deploy to GCP or push to registries (but can generate the commands)
+- **No secrets** — Don't ask Devin to handle real API keys or database passwords
+- **Local Docker only** — Devin can test locally but can't access remote environments
+- **Manual deployment** — After Devin prepares changes, you'll need to manually deploy to production
 
 ## Suggested prompts for common tasks
 
