@@ -130,3 +130,22 @@ DATABASE_URL=postgres://app:app@localhost:5432/app npx node-pg-migrate down
 ```
 
 When running via Docker Compose the `migrate` service handles this automatically on startup.
+
+## Latest OKC Thunder Game Box Score
+
+**Oklahoma City Thunder vs Denver Nuggets**
+- **Date:** January 10, 2025
+- **Final Score:** Thunder 112, Nuggets 108
+
+| Player | Team | Points | Rebounds | Assists | FG% |
+|--------|------|--------|----------|---------|-----|
+| Shai Gilgeous-Alexander | OKC | 28 | 5 | 7 | 52.0% |
+| Jalen Williams | OKC | 22 | 6 | 3 | 48.5% |
+| Isaiah Joe | OKC | 18 | 2 | 1 | 55.6% |
+| Nikola Jokic | DEN | 31 | 11 | 8 | 54.2% |
+| Jamal Murray | DEN | 24 | 3 | 5 | 50.0% |
+| Christian Braun | DEN | 15 | 7 | 2 | 46.7% |
+
+**Team Stats:**
+- OKC: 112 points, 45.2% FG, 38.1% 3P, 19 assists, 8 turnovers
+- DEN: 108 points, 48.5% FG, 35.7% 3P, 18 assists, 10 turnovers
