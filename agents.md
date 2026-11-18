@@ -14,6 +14,18 @@ claude
 
 Claude Code reads the project structure automatically. It works best when you give it specific, scoped tasks rather than broad ones.
 
+## Directions for Devin
+
+Devin is an autonomous AI agent that can work independently on tasks. When working with Devin on this repository:
+
+- **Start with small, well-defined tasks** — Devin works best with clear acceptance criteria and specific file paths
+- **Verify each layer independently** — After Devin makes changes to the database, API, or frontend, ask it to test that layer before moving to the next
+- **Review migrations carefully** — Always have Devin show you the migration file before it runs `npm run migrate`
+- **Check the logs** — Ask Devin to run `docker compose logs` and share any errors or warnings
+- **Use git commits for checkpoints** — Have Devin commit after each logical change so you can review the diff
+- **Test the full stack** — Before considering a task complete, have Devin run `docker compose up` and verify the feature works end-to-end
+- **Ask for explanations** — Request that Devin explain its approach before making risky changes like schema modifications or refactors
+
 ## Suggested prompts for common tasks
 
 ### Understanding the codebase
