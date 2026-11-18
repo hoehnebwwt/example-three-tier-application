@@ -130,3 +130,17 @@ DATABASE_URL=postgres://app:app@localhost:5432/app npx node-pg-migrate down
 ```
 
 When running via Docker Compose the `migrate` service handles this automatically on startup.
+
+## Inspirational Quotes
+
+> "The only way to do great work is to love what you do." — Steve Jobs
+
+> "Innovation distinguishes between a leader and a follower." — Steve Jobs
+
+> "Code is poetry written for machines and humans alike." — Unknown
+
+> "Every expert was once a beginner." — Unknown
+
+> "The best time to plant a tree was 20 years ago. The second best time is now." — Chinese Proverb
+
+> "Simplicity is the ultimate sophistication." — Leonardo da Vinci
