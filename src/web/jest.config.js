@@ -9,6 +9,7 @@ module.exports = {
     '^.+\\.tsx?$': ['ts-jest', {
       tsconfig: {
         jsx: 'react',
+        rootDir: '.',
       },
     }],
   },
