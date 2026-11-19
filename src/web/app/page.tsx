@@ -1,7 +1,21 @@
-import { getTasks, createTask, toggleTask } from './actions';
+import { getTasks, createTask, toggleTask, setPriority } from './actions';
 
 export default async function Home() {
   const tasks = await getTasks();
+
+  const getPriorityBadgeClasses = (priority: string) => {
+    const baseClasses = 'rounded px-2 py-0.5 text-sm font-medium';
+    switch (priority) {
+      case 'high':
+        return `${baseClasses} bg-red-100 text-red-700`;
+      case 'medium':
+        return `${baseClasses} bg-yellow-100 text-yellow-700`;
+      case 'low':
+        return `${baseClasses} bg-green-100 text-green-700`;
+      default:
+        return `${baseClasses} bg-yellow-100 text-yellow-700`;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 py-16 px-4">
@@ -68,6 +82,38 @@ export default async function Home() {
               >
                 {task.title}
               </span>
+              <span className={getPriorityBadgeClasses(task.priority)}>
+                {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+              </span>
+              <form className="flex gap-1">
+                <button
+                  formAction={async () => {
+                    'use server';
+                    await setPriority(task.id, 'low');
+                  }}
+                  className="rounded px-2 py-1 text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+                >
+                  Low
+                </button>
+                <button
+                  formAction={async () => {
+                    'use server';
+                    await setPriority(task.id, 'medium');
+                  }}
+                  className="rounded px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-700 hover:bg-yellow-200 transition-colors"
+                >
+                  Medium
+                </button>
+                <button
+                  formAction={async () => {
+                    'use server';
+                    await setPriority(task.id, 'high');
+                  }}
+                  className="rounded px-2 py-1 text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                >
+                  High
+                </button>
+              </form>
             </li>
           ))}
         </ul>
