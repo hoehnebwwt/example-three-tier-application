@@ -2,10 +2,10 @@
  * @jest-environment node
  */
 
-// Mock next/cache
+// Mock next/cache (virtual: true because next is not installed in test env)
 jest.mock('next/cache', () => ({
   revalidatePath: jest.fn(),
-}));
+}), { virtual: true });
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -186,14 +186,6 @@ describe('Task Actions', () => {
           body: JSON.stringify({ priority: 'low' }),
         })
       );
-    });
-
-    test('should fail when updating with invalid priority', () => {
-      const validPriorities = ['low', 'medium', 'high'];
-      const invalidPriority = 'urgent';
-
-      // This test is intentionally failing to demonstrate a failing test
-      expect(validPriorities.includes(invalidPriority)).toBe(true);
     });
   });
 
