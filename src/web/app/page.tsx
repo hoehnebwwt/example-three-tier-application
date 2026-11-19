@@ -1,7 +1,31 @@
-import { getTasks, createTask, toggleTask, updateTaskPriority } from './actions';
+'use client';
 
-export default async function Home() {
-  const tasks = await getTasks();
+import { useState, useEffect } from 'react';
+import { getTasks, createTask, toggleTask, updateTaskPriority, type Task, type FilterOptions } from './actions';
+
+export default function Home() {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [filters, setFilters] = useState<FilterOptions>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadTasks = async () => {
+      setLoading(true);
+      try {
+        const data = await getTasks(filters);
+        setTasks(data);
+      } catch (error) {
+        console.error('Failed to load tasks:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadTasks();
+  }, [filters]);
+
+  const handleFilterChange = (newFilters: FilterOptions) => {
+    setFilters(newFilters);
+  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -16,6 +40,27 @@ export default async function Home() {
     }
   };
 
+  const handleCreateTask = async (formData: FormData) => {
+    await createTask(formData);
+    // Reload tasks after creation
+    const data = await getTasks(filters);
+    setTasks(data);
+  };
+
+  const handleToggleTask = async (id: number, completed: boolean) => {
+    await toggleTask(id, !completed);
+    // Reload tasks after toggle
+    const data = await getTasks(filters);
+    setTasks(data);
+  };
+
+  const handleUpdatePriority = async (id: number, priority: 'low' | 'medium' | 'high') => {
+    await updateTaskPriority(id, priority);
+    // Reload tasks after update
+    const data = await getTasks(filters);
+    setTasks(data);
+  };
+
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 py-16 px-4">
       <div className="max-w-lg mx-auto">
@@ -24,7 +69,7 @@ export default async function Home() {
         </h1>
 
         {/* Add task form */}
-        <form action={createTask} className="flex gap-2 mb-8">
+        <form action={handleCreateTask} className="flex gap-2 mb-8">
           <input
             name="title"
             type="text"
@@ -40,38 +85,75 @@ export default async function Home() {
           </button>
         </form>
 
+        {/* Filter controls */}
+        <div className="mb-6 flex gap-3 flex-wrap">
+          <select
+            value={filters.priority || ''}
+            onChange={(e) => handleFilterChange({ ...filters, priority: e.target.value as any || undefined })}
+            className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-500"
+          >
+            <option value="">All Priorities</option>
+            <option value="low">Low Priority</option>
+            <option value="medium">Medium Priority</option>
+            <option value="high">High Priority</option>
+          </select>
+
+          <select
+            value={filters.completed === undefined ? '' : String(filters.completed)}
+            onChange={(e) => {
+              if (e.target.value === '') {
+                handleFilterChange({ ...filters, completed: undefined });
+              } else {
+                handleFilterChange({ ...filters, completed: e.target.value === 'true' });
+              }
+            }}
+            className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-500"
+          >
+            <option value="">All Tasks</option>
+            <option value="false">Active Only</option>
+            <option value="true">Completed Only</option>
+          </select>
+
+          {(filters.priority || filters.completed !== undefined) && (
+            <button
+              onClick={() => handleFilterChange({})}
+              className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+
         {/* Task list */}
         <ul className="space-y-2">
-          {tasks.length === 0 && (
-            <li className="text-zinc-400 text-center py-8">No tasks yet. Add one above!</li>
+          {loading && (
+            <li className="text-zinc-400 text-center py-8">Loading...</li>
           )}
-          {tasks.map((task) => (
+          {!loading && tasks.length === 0 && (
+            <li className="text-zinc-400 text-center py-8">
+              {Object.keys(filters).length > 0 ? 'No tasks match your filters.' : 'No tasks yet. Add one above!'}
+            </li>
+          )}
+          {!loading && tasks.map((task) => (
             <li
               key={task.id}
               className="flex items-center gap-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-3"
             >
-              <form
-                action={async () => {
-                  'use server';
-                  await toggleTask(task.id, !task.completed);
-                }}
+              <button
+                onClick={() => handleToggleTask(task.id, task.completed)}
+                className={`h-5 w-5 rounded border-2 flex-shrink-0 transition-colors ${
+                  task.completed
+                    ? 'bg-zinc-900 dark:bg-zinc-50 border-zinc-900 dark:border-zinc-50'
+                    : 'border-zinc-300 dark:border-zinc-600 hover:border-zinc-500'
+                }`}
+                aria-label={task.completed ? 'Mark incomplete' : 'Mark complete'}
               >
-                <button
-                  type="submit"
-                  className={`h-5 w-5 rounded border-2 flex-shrink-0 transition-colors ${
-                    task.completed
-                      ? 'bg-zinc-900 dark:bg-zinc-50 border-zinc-900 dark:border-zinc-50'
-                      : 'border-zinc-300 dark:border-zinc-600 hover:border-zinc-500'
-                  }`}
-                  aria-label={task.completed ? 'Mark incomplete' : 'Mark complete'}
-                >
-                  {task.completed && (
-                    <svg viewBox="0 0 12 12" className="text-white dark:text-zinc-900 w-full h-full p-0.5">
-                      <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </button>
-              </form>
+                {task.completed && (
+                  <svg viewBox="0 0 12 12" className="text-white dark:text-zinc-900 w-full h-full p-0.5">
+                    <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </button>
               <span
                 className={`flex-1 text-sm ${
                   task.completed
@@ -81,33 +163,20 @@ export default async function Home() {
               >
                 {task.title}
               </span>
-              <form
-                action={async (formData) => {
-                  'use server';
-                  const priority = formData.get('priority') as 'low' | 'medium' | 'high';
-                  await updateTaskPriority(task.id, priority);
-                }}
-                className="flex-shrink-0"
+              <select
+                value={task.priority}
+                onChange={(e) => handleUpdatePriority(task.id, e.target.value as 'low' | 'medium' | 'high')}
+                className={`text-xs px-2 py-1 rounded font-medium cursor-pointer border-0 focus:outline-none focus:ring-2 focus:ring-zinc-500 ${getPriorityColor(task.priority)}`}
               >
-                <select
-                  name="priority"
-                  defaultValue={task.priority}
-                  onChange={(e) => {
-                    const form = e.currentTarget.form;
-                    if (form) form.requestSubmit();
-                  }}
-                  className={`text-xs px-2 py-1 rounded font-medium cursor-pointer border-0 focus:outline-none focus:ring-2 focus:ring-zinc-500 ${getPriorityColor(task.priority)}`}
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
-              </form>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
             </li>
           ))}
         </ul>
 
-        {tasks.length > 0 && (
+        {!loading && tasks.length > 0 && (
           <p className="mt-4 text-xs text-zinc-400 text-right">
             {tasks.filter((t) => t.completed).length} / {tasks.length} completed
           </p>
