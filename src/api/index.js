@@ -10,9 +10,33 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-// GET /tasks — list all tasks
-app.get('/tasks', async (_req, res) => {
-  const { rows } = await db.query('SELECT * FROM tasks ORDER BY created_at ASC');
+// GET /tasks — list all tasks with optional filtering
+app.get('/tasks', async (req, res) => {
+  const { priority, completed } = req.query;
+  
+  let query = 'SELECT * FROM tasks WHERE 1=1';
+  const params = [];
+  
+  if (priority) {
+    const validPriorities = ['low', 'medium', 'high'];
+    if (validPriorities.includes(priority)) {
+      query += ' AND priority = $' + (params.length + 1);
+      params.push(priority);
+      console.log(`[GET /tasks] Filtering by priority: ${priority}`);
+    }
+  }
+  
+  if (completed !== undefined) {
+    const isCompleted = completed === 'true';
+    query += ' AND completed = $' + (params.length + 1);
+    params.push(isCompleted);
+    console.log(`[GET /tasks] Filtering by completed: ${isCompleted}`);
+  }
+  
+  query += ' ORDER BY created_at ASC';
+  
+  const { rows } = await db.query(query, params);
+  console.log(`[GET /tasks] Returned ${rows.length} task(s)`);
   res.json(rows);
 });
 

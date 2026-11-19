@@ -12,8 +12,22 @@ export type Task = {
   created_at: string;
 };
 
-export async function getTasks(): Promise<Task[]> {
-  const res = await fetch(`${API_URL}/tasks`, { cache: 'no-store' });
+export type FilterOptions = {
+  priority?: 'low' | 'medium' | 'high';
+  completed?: boolean;
+};
+
+export async function getTasks(filters?: FilterOptions): Promise<Task[]> {
+  const params = new URLSearchParams();
+  if (filters?.priority) {
+    params.append('priority', filters.priority);
+  }
+  if (filters?.completed !== undefined) {
+    params.append('completed', String(filters.completed));
+  }
+  
+  const url = params.toString() ? `${API_URL}/tasks?${params.toString()}` : `${API_URL}/tasks`;
+  const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error('Failed to fetch tasks');
   return res.json();
 }
