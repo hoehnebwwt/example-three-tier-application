@@ -1,7 +1,20 @@
-import { getTasks, createTask, toggleTask } from './actions';
+import { getTasks, createTask, toggleTask, updateTaskPriority } from './actions';
 
 export default async function Home() {
   const tasks = await getTasks();
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high':
+        return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100';
+      case 'medium':
+        return 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-100';
+      case 'low':
+        return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100';
+      default:
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 py-16 px-4">
@@ -68,6 +81,28 @@ export default async function Home() {
               >
                 {task.title}
               </span>
+              <form
+                action={async (formData) => {
+                  'use server';
+                  const priority = formData.get('priority') as 'low' | 'medium' | 'high';
+                  await updateTaskPriority(task.id, priority);
+                }}
+                className="flex-shrink-0"
+              >
+                <select
+                  name="priority"
+                  defaultValue={task.priority}
+                  onChange={(e) => {
+                    const form = e.currentTarget.form;
+                    if (form) form.requestSubmit();
+                  }}
+                  className={`text-xs px-2 py-1 rounded font-medium cursor-pointer border-0 focus:outline-none focus:ring-2 focus:ring-zinc-500 ${getPriorityColor(task.priority)}`}
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </form>
             </li>
           ))}
         </ul>

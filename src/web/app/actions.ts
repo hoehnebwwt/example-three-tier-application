@@ -8,6 +8,7 @@ export type Task = {
   id: number;
   title: string;
   completed: boolean;
+  priority: 'low' | 'medium' | 'high';
   created_at: string;
 };
 
@@ -32,6 +33,15 @@ export async function toggleTask(id: number, completed: boolean) {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ completed }),
+  });
+  revalidatePath('/');
+}
+
+export async function updateTaskPriority(id: number, priority: 'low' | 'medium' | 'high') {
+  await fetch(`${API_URL}/tasks/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ priority }),
   });
   revalidatePath('/');
 }
