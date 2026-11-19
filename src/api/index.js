@@ -22,6 +22,7 @@ app.get('/tasks', async (req, res) => {
     if (validPriorities.includes(priority)) {
       query += ' AND priority = $' + (params.length + 1);
       params.push(priority);
+      console.log(`[GET /tasks] Filtering by priority: ${priority}`);
     }
   }
   
@@ -29,11 +30,13 @@ app.get('/tasks', async (req, res) => {
     const isCompleted = completed === 'true';
     query += ' AND completed = $' + (params.length + 1);
     params.push(isCompleted);
+    console.log(`[GET /tasks] Filtering by completed: ${isCompleted}`);
   }
   
   query += ' ORDER BY created_at ASC';
   
   const { rows } = await db.query(query, params);
+  console.log(`[GET /tasks] Returned ${rows.length} task(s)`);
   res.json(rows);
 });
 
