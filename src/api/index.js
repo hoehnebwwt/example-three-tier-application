@@ -18,21 +18,22 @@ app.get('/tasks', async (_req, res) => {
 
 // POST /tasks — create a task
 app.post('/tasks', async (req, res) => {
-  const { title } = req.body;
+  const { title, priority } = req.body;
   if (!title || typeof title !== 'string' || !title.trim()) {
     return res.status(400).json({ error: 'title is required' });
   }
+  const taskPriority = priority && ['low', 'medium', 'high'].includes(priority) ? priority : 'medium';
   const { rows } = await db.query(
-    'INSERT INTO tasks (title) VALUES ($1) RETURNING *',
-    [title.trim()]
+    'INSERT INTO tasks (title, priority) VALUES ($1, $2) RETURNING *',
+    [title.trim(), taskPriority]
   );
   res.status(201).json(rows[0]);
 });
 
-// PATCH /tasks/:id — update a task (complete/uncomplete or rename)
+// PATCH /tasks/:id — update a task (complete/uncomplete, rename, or change priority)
 app.patch('/tasks/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const { completed, title } = req.body;
+  const { completed, title, priority } = req.body;
 
   const { rows } = await db.query('SELECT * FROM tasks WHERE id = $1', [id]);
   if (rows.length === 0) return res.status(404).json({ error: 'Not found' });
@@ -40,10 +41,11 @@ app.patch('/tasks/:id', async (req, res) => {
   const current = rows[0];
   const newCompleted = completed !== undefined ? Boolean(completed) : current.completed;
   const newTitle = title !== undefined ? title.trim() : current.title;
+  const newPriority = priority !== undefined && ['low', 'medium', 'high'].includes(priority) ? priority : current.priority;
 
   const { rows: updated } = await db.query(
-    'UPDATE tasks SET completed = $1, title = $2 WHERE id = $3 RETURNING *',
-    [newCompleted, newTitle, id]
+    'UPDATE tasks SET completed = $1, title = $2, priority = $3 WHERE id = $4 RETURNING *',
+    [newCompleted, newTitle, newPriority, id]
   );
   res.json(updated[0]);
 });
