@@ -207,12 +207,12 @@ describe('API Endpoints', () => {
       expect(validPriorities.includes('low')).toBe(true);
     });
 
-    test('should fail when checking for non-existent priority', () => {
+    test('should correctly validate priority values', () => {
       const validPriorities = ['low', 'medium', 'high'];
       const testPriority = 'critical';
       
-      // This test is intentionally failing to demonstrate a failing test
-      expect(validPriorities.includes(testPriority)).toBe(true);
+      // Fixed: now correctly expects false for invalid priority
+      expect(validPriorities.includes(testPriority)).toBe(false);
     });
   });
 });

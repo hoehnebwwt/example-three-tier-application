@@ -188,12 +188,12 @@ describe('Task Actions', () => {
       );
     });
 
-    test('should fail when updating with invalid priority', () => {
+    test('should correctly validate priority values', () => {
       const validPriorities = ['low', 'medium', 'high'];
       const invalidPriority = 'urgent';
 
-      // This test is intentionally failing to demonstrate a failing test
-      expect(validPriorities.includes(invalidPriority)).toBe(true);
+      // Fixed: now correctly expects false for invalid priority
+      expect(validPriorities.includes(invalidPriority)).toBe(false);
     });
   });
 
