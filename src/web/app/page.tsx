@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getTasks, createTask, toggleTask, updateTaskPriority, deleteTask, type Task, type FilterOptions } from './actions';
+import { getTasks, createTask, toggleTask, updateTaskPriority, updateTaskDueDate, deleteTask, type Task, type FilterOptions } from './actions';
 
 export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filters, setFilters] = useState<FilterOptions>({});
   const [loading, setLoading] = useState(true);
+  const [editingDueDateId, setEditingDueDateId] = useState<number | null>(null);
 
   useEffect(() => {
     const loadTasks = async () => {
@@ -40,6 +41,15 @@ export default function Home() {
     }
   };
 
+  const isOverdue = (task: Task): boolean => {
+    if (!task.due_date || task.completed) return false;
+    return new Date(task.due_date) < new Date();
+  };
+
+  const formatDueDate = (dueDate: string): string => {
+    return new Date(dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
   const handleCreateTask = async (formData: FormData) => {
     await createTask(formData);
     // Reload tasks after creation
@@ -61,6 +71,14 @@ export default function Home() {
     setTasks(data);
   };
 
+  const handleUpdateDueDate = async (id: number, dueDate: string | null) => {
+    await updateTaskDueDate(id, dueDate);
+    setEditingDueDateId(null);
+    // Reload tasks after update
+    const data = await getTasks(filters);
+    setTasks(data);
+  };
+
   const handleDeleteTask = async (id: number) => {
     await deleteTask(id);
     // Reload tasks after deletion
@@ -76,20 +94,32 @@ export default function Home() {
         </h1>
 
         {/* Add task form */}
-        <form action={handleCreateTask} className="flex gap-2 mb-8">
-          <input
-            name="title"
-            type="text"
-            required
-            placeholder="Add a new task..."
-            className="flex-1 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-4 py-2 text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-500"
-          />
-          <button
-            type="submit"
-            className="rounded-lg bg-zinc-900 dark:bg-zinc-50 px-5 py-2 font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-200 transition-colors"
-          >
-            Add
-          </button>
+        <form action={handleCreateTask} className="mb-8">
+          <div className="flex gap-2 mb-4">
+            <input
+              name="title"
+              type="text"
+              required
+              placeholder="Add a new task..."
+              className="flex-1 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-4 py-2 text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-500"
+            />
+            <button
+              type="submit"
+              className="rounded-lg bg-zinc-900 dark:bg-zinc-50 px-5 py-2 font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-200 transition-colors"
+            >
+              Add
+            </button>
+          </div>
+          <div>
+            <label className="block text-sm text-zinc-600 dark:text-zinc-400 mb-2">
+              Due Date (optional)
+            </label>
+            <input
+              name="due_date"
+              type="date"
+              className="w-full rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-4 py-2 text-zinc-900 dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-500"
+            />
+          </div>
         </form>
 
         {/* Filter controls */}
@@ -121,7 +151,18 @@ export default function Home() {
             <option value="true">Completed Only</option>
           </select>
 
-          {(filters.priority || filters.completed !== undefined) && (
+          <select
+            value={filters.due_date_filter || ''}
+            onChange={(e) => handleFilterChange({ ...filters, due_date_filter: e.target.value as any || undefined })}
+            className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-500"
+          >
+            <option value="">All Due Dates</option>
+            <option value="overdue">Overdue</option>
+            <option value="today">Due Today</option>
+            <option value="this_week">Due This Week</option>
+          </select>
+
+          {(filters.priority || filters.completed !== undefined || filters.due_date_filter) && (
             <button
               onClick={() => handleFilterChange({})}
               className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
@@ -144,51 +185,88 @@ export default function Home() {
           {!loading && tasks.map((task) => (
             <li
               key={task.id}
-              className="flex items-center gap-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-3"
+              className={`flex flex-col gap-2 rounded-lg border px-4 py-3 ${
+                isOverdue(task)
+                  ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950'
+                  : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800'
+              }`}
             >
-              <button
-                onClick={() => handleToggleTask(task.id, task.completed)}
-                className={`h-5 w-5 rounded border-2 flex-shrink-0 transition-colors ${
-                  task.completed
-                    ? 'bg-zinc-900 dark:bg-zinc-50 border-zinc-900 dark:border-zinc-50'
-                    : 'border-zinc-300 dark:border-zinc-600 hover:border-zinc-500'
-                }`}
-                aria-label={task.completed ? 'Mark incomplete' : 'Mark complete'}
-              >
-                {task.completed && (
-                  <svg viewBox="0 0 12 12" className="text-white dark:text-zinc-900 w-full h-full p-0.5">
-                    <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => handleToggleTask(task.id, task.completed)}
+                  className={`h-5 w-5 rounded border-2 flex-shrink-0 transition-colors ${
+                    task.completed
+                      ? 'bg-zinc-900 dark:bg-zinc-50 border-zinc-900 dark:border-zinc-50'
+                      : 'border-zinc-300 dark:border-zinc-600 hover:border-zinc-500'
+                  }`}
+                  aria-label={task.completed ? 'Mark incomplete' : 'Mark complete'}
+                >
+                  {task.completed && (
+                    <svg viewBox="0 0 12 12" className="text-white dark:text-zinc-900 w-full h-full p-0.5">
+                      <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </button>
+                <span
+                  className={`flex-1 text-sm ${
+                    task.completed
+                      ? 'line-through text-zinc-400'
+                      : 'text-zinc-800 dark:text-zinc-100'
+                  }`}
+                >
+                  {task.title}
+                </span>
+                <select
+                  value={task.priority}
+                  onChange={(e) => handleUpdatePriority(task.id, e.target.value as 'low' | 'medium' | 'high')}
+                  className={`text-xs px-2 py-1 rounded font-medium cursor-pointer border-0 focus:outline-none focus:ring-2 focus:ring-zinc-500 ${getPriorityColor(task.priority)}`}
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+                <button
+                  onClick={() => handleDeleteTask(task.id)}
+                  className="flex-shrink-0 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                  aria-label="Delete task"
+                >
+                  <svg viewBox="0 0 16 16" className="w-4 h-4" fill="currentColor">
+                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" />
+                    <path fillRule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 1a.5.5 0 0 0-.5.5v1h13V1.5a.5.5 0 0 0-.5-.5h-3V1a.5.5 0 0 0-.5-.5h-2a.5.5 0 0 0-.5.5v.5h-3z" />
                   </svg>
-                )}
-              </button>
-              <span
-                className={`flex-1 text-sm ${
-                  task.completed
-                    ? 'line-through text-zinc-400'
-                    : 'text-zinc-800 dark:text-zinc-100'
-                }`}
-              >
-                {task.title}
-              </span>
-              <select
-                value={task.priority}
-                onChange={(e) => handleUpdatePriority(task.id, e.target.value as 'low' | 'medium' | 'high')}
-                className={`text-xs px-2 py-1 rounded font-medium cursor-pointer border-0 focus:outline-none focus:ring-2 focus:ring-zinc-500 ${getPriorityColor(task.priority)}`}
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-              <button
-                onClick={() => handleDeleteTask(task.id)}
-                className="flex-shrink-0 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                aria-label="Delete task"
-              >
-                <svg viewBox="0 0 16 16" className="w-4 h-4" fill="currentColor">
-                  <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" />
-                  <path fillRule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 1a.5.5 0 0 0-.5.5v1h13V1.5a.5.5 0 0 0-.5-.5h-3V1a.5.5 0 0 0-.5-.5h-2a.5.5 0 0 0-.5.5v.5h-3z" />
-                </svg>
-              </button>
+                </button>
+              </div>
+
+              {/* Due date display and editing */}
+              {editingDueDateId === task.id ? (
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    defaultValue={task.due_date ? task.due_date.split('T')[0] : ''}
+                    onBlur={(e) => {
+                      if (e.target.value) {
+                        handleUpdateDueDate(task.id, e.target.value);
+                      } else {
+                        setEditingDueDateId(null);
+                      }
+                    }}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        handleUpdateDueDate(task.id, e.target.value);
+                      }
+                    }}
+                    autoFocus
+                    className="flex-1 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-1 text-sm text-zinc-900 dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-500"
+                  />
+                </div>
+              ) : (
+                <button
+                  onClick={() => setEditingDueDateId(task.id)}
+                  className="text-left text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
+                >
+                  {task.due_date ? `Due: ${formatDueDate(task.due_date)}` : 'Set due date'}
+                </button>
+              )}
             </li>
           ))}
         </ul>
