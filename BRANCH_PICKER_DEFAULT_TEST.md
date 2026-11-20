@@ -1,0 +1,1 @@
+Branch picker default Code smoke test
