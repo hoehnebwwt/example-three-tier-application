@@ -66,6 +66,10 @@ The API is not exposed directly, but you can reach it through the web container 
 | POST | `/tasks` | Create a task (`{ "title": "..." }`) |
 | PATCH | `/tasks/:id` | Update a task (`{ "completed": true }` or `{ "title": "..." }`) |
 
+## Prompt box test
+
+The API provides a RESTful interface for task management, allowing the frontend to create, retrieve, and update tasks through standard HTTP methods.
+
 ## Project structure
 
 ```
