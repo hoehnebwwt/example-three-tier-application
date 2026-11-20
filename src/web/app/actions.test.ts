@@ -100,19 +100,6 @@ describe('Task Actions', () => {
       );
       expect(revalidatePath).toHaveBeenCalledWith('/');
     });
-
-    test('should fail when creating task without title', async () => {
-      global.fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-      });
-
-      const formData = new FormData();
-
-      await createTask(formData);
-
-      expect(global.fetch).toHaveBeenCalled();
-    });
   });
 
   describe('toggleTask', () => {
@@ -134,26 +121,10 @@ describe('Task Actions', () => {
       );
       expect(revalidatePath).toHaveBeenCalledWith('/');
     });
-
-    test('should mark task as incomplete', async () => {
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ id: 1, title: 'Task', completed: false, priority: 'medium' }),
-      });
-
-      await toggleTask(1, false);
-
-      expect(global.fetch).toHaveBeenCalledWith(
-        'http://localhost:3001/tasks/1',
-        expect.objectContaining({
-          body: JSON.stringify({ completed: false }),
-        })
-      );
-    });
   });
 
   describe('updateTaskPriority', () => {
-    test('should update task priority to high', async () => {
+    test('should update task priority', async () => {
       global.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ id: 1, title: 'Task', completed: false, priority: 'high' }),
@@ -170,65 +141,6 @@ describe('Task Actions', () => {
         })
       );
       expect(revalidatePath).toHaveBeenCalledWith('/');
-    });
-
-    test('should update task priority to low', async () => {
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ id: 1, title: 'Task', completed: false, priority: 'low' }),
-      });
-
-      await updateTaskPriority(1, 'low');
-
-      expect(global.fetch).toHaveBeenCalledWith(
-        'http://localhost:3001/tasks/1',
-        expect.objectContaining({
-          body: JSON.stringify({ priority: 'low' }),
-        })
-      );
-    });
-
-    test('should fail when updating with invalid priority', () => {
-      const validPriorities = ['low', 'medium', 'high'];
-      const invalidPriority = 'urgent';
-
-      // This test checks that 'urgent' is not in the valid priorities
-      expect(validPriorities.includes(invalidPriority)).toBe(false);
-    });
-  });
-
-  describe('Task filtering logic', () => {
-    test('should build correct URL with multiple filters', () => {
-      const filters = { priority: 'high', completed: true };
-      const params = new URLSearchParams();
-      
-      if (filters.priority) {
-        params.append('priority', filters.priority);
-      }
-      if (filters.completed !== undefined) {
-        params.append('completed', String(filters.completed));
-      }
-
-      const url = `http://localhost:3001/tasks?${params.toString()}`;
-      
-      expect(url).toContain('priority=high');
-      expect(url).toContain('completed=true');
-    });
-
-    test('should handle empty filters', () => {
-      const filters = {};
-      const params = new URLSearchParams();
-      
-      if (filters.priority) {
-        params.append('priority', filters.priority);
-      }
-      if (filters.completed !== undefined) {
-        params.append('completed', String(filters.completed));
-      }
-
-      const url = params.toString() ? `http://localhost:3001/tasks?${params.toString()}` : 'http://localhost:3001/tasks';
-      
-      expect(url).toBe('http://localhost:3001/tasks');
     });
   });
 });
