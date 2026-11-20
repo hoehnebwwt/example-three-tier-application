@@ -49,8 +49,17 @@ app.get('/tasks', async (req, res) => {
   query += ' ORDER BY created_at ASC';
   
   const { rows } = await db.query(query, params);
-  console.log(`[GET /tasks] Returned ${rows.length} task(s)`);
-  res.json(rows);
+
+  // Ensure active tasks always have a priority set; default null to 'medium'
+  const normalizedRows = rows.map(task => {
+    if (!task.completed && !task.priority) {
+      return { ...task, priority: 'medium' };
+    }
+    return task;
+  });
+
+  console.log(`[GET /tasks] Returned ${normalizedRows.length} task(s)`);
+  res.json(normalizedRows);
 });
 
 // POST /tasks — create a task
@@ -86,9 +95,12 @@ app.patch('/tasks/:id', async (req, res) => {
   const newPriority = priority !== undefined && ['low', 'medium', 'high'].includes(priority) ? priority : current.priority;
   const newDueDate = due_date !== undefined ? (due_date || null) : current.due_date;
 
+  // Ensure active tasks always have a priority set
+  const finalPriority = !newCompleted && !newPriority ? 'medium' : newPriority;
+
   const { rows: updated } = await db.query(
     'UPDATE tasks SET completed = $1, title = $2, priority = $3, due_date = $4 WHERE id = $5 RETURNING *',
-    [newCompleted, newTitle, newPriority, newDueDate, id]
+    [newCompleted, newTitle, finalPriority, newDueDate, id]
   );
   res.json(updated[0]);
 });

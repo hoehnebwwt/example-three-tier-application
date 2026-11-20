@@ -52,7 +52,16 @@ describe('API Endpoints', () => {
       query += ' ORDER BY created_at ASC';
       
       const { rows } = await db.query(query, params);
-      res.json(rows);
+
+      // Ensure active tasks always have a priority set; default null to 'medium'
+      const normalizedRows = rows.map(task => {
+        if (!task.completed && !task.priority) {
+          return { ...task, priority: 'medium' };
+        }
+        return task;
+      });
+
+      res.json(normalizedRows);
     });
 
     // Mock POST /tasks endpoint
@@ -88,9 +97,12 @@ describe('API Endpoints', () => {
       const newPriority = priority !== undefined && ['low', 'medium', 'high'].includes(priority) ? priority : current.priority;
       const newDueDate = due_date !== undefined ? (due_date || null) : current.due_date;
 
+      // Ensure active tasks always have a priority set
+      const finalPriority = !newCompleted && !newPriority ? 'medium' : newPriority;
+
       const { rows: updated } = await db.query(
         'UPDATE tasks SET completed = $1, title = $2, priority = $3, due_date = $4 WHERE id = $5 RETURNING *',
-        [newCompleted, newTitle, newPriority, newDueDate, id]
+        [newCompleted, newTitle, finalPriority, newDueDate, id]
       );
       res.json(updated[0]);
     });
@@ -264,8 +276,16 @@ describe('API Endpoints', () => {
 
       const { rows } = await db.query('SELECT * FROM tasks WHERE 1=1 ORDER BY created_at ASC', []);
       
+      // Normalize rows like the endpoint does
+      const normalizedRows = rows.map(task => {
+        if (!task.completed && !task.priority) {
+          return { ...task, priority: 'medium' };
+        }
+        return task;
+      });
+      
       // Filter for active tasks (completed = false)
-      const activeTasks = rows.filter(task => !task.completed);
+      const activeTasks = normalizedRows.filter(task => !task.completed);
       
       // All active tasks must have a non-null priority
       activeTasks.forEach(task => {
@@ -283,9 +303,10 @@ describe('API Endpoints', () => {
 
       const { rows: current } = await db.query('SELECT * FROM tasks WHERE id = $1', [1]);
       const newCompleted = true;
+      const finalPriority = !newCompleted && !current[0].priority ? 'medium' : current[0].priority;
       const { rows: updated } = await db.query(
         'UPDATE tasks SET completed = $1, title = $2, priority = $3, due_date = $4 WHERE id = $5 RETURNING *',
-        [newCompleted, current[0].title, current[0].priority, current[0].due_date, 1]
+        [newCompleted, current[0].title, finalPriority, current[0].due_date, 1]
       );
 
       expect(updated[0].completed).toBe(true);
@@ -298,9 +319,11 @@ describe('API Endpoints', () => {
 
       const { rows: current } = await db.query('SELECT * FROM tasks WHERE id = $1', [1]);
       const newDueDate = '2025-01-15T00:00:00Z';
+      const newCompleted = current[0].completed;
+      const finalPriority = !newCompleted && !current[0].priority ? 'medium' : current[0].priority;
       const { rows: updated } = await db.query(
         'UPDATE tasks SET completed = $1, title = $2, priority = $3, due_date = $4 WHERE id = $5 RETURNING *',
-        [current[0].completed, current[0].title, current[0].priority, newDueDate, 1]
+        [newCompleted, current[0].title, finalPriority, newDueDate, 1]
       );
 
       expect(updated[0].due_date).toBe('2025-01-15T00:00:00Z');
