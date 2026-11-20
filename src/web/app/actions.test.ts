@@ -192,8 +192,8 @@ describe('Task Actions', () => {
       const validPriorities = ['low', 'medium', 'high'];
       const invalidPriority = 'urgent';
 
-      // This test is intentionally failing to demonstrate a failing test
-      expect(validPriorities.includes(invalidPriority)).toBe(true);
+      // This test checks that 'urgent' is not in the valid priorities
+      expect(validPriorities.includes(invalidPriority)).toBe(false);
     });
   });
 
