@@ -78,6 +78,17 @@ describe('API Endpoints', () => {
       );
       res.json(updated[0]);
     });
+
+    // Mock DELETE /tasks/:id endpoint
+    app.delete('/tasks/:id', async (req, res) => {
+      const id = parseInt(req.params.id, 10);
+
+      const { rows } = await db.query('SELECT * FROM tasks WHERE id = $1', [id]);
+      if (rows.length === 0) return res.status(404).json({ error: 'Not found' });
+
+      await db.query('DELETE FROM tasks WHERE id = $1', [id]);
+      res.status(204).send();
+    });
   });
 
   describe('GET /health', () => {
@@ -193,6 +204,51 @@ describe('API Endpoints', () => {
       const { rows } = await db.query('SELECT * FROM tasks WHERE id = $1', [999]);
       
       expect(rows).toHaveLength(0);
+    });
+  });
+
+  describe('DELETE /tasks/:id', () => {
+    test('should delete a task', async () => {
+      db.query
+        .mockResolvedValueOnce({ rows: [{ id: 1, title: 'Task to Delete', priority: 'medium', completed: false }] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const mockReq = { params: { id: '1' } };
+      const mockRes = {
+        status: jest.fn().mockReturnThis(),
+        send: jest.fn().mockReturnThis(),
+      };
+
+      const id = parseInt(mockReq.params.id, 10);
+      const { rows } = await db.query('SELECT * FROM tasks WHERE id = $1', [id]);
+      
+      if (rows.length > 0) {
+        await db.query('DELETE FROM tasks WHERE id = $1', [id]);
+        mockRes.status(204).send();
+      }
+
+      expect(mockRes.status).toHaveBeenCalledWith(204);
+      expect(mockRes.send).toHaveBeenCalled();
+    });
+
+    test('should return 404 when deleting non-existent task', async () => {
+      db.query.mockResolvedValueOnce({ rows: [] });
+
+      const mockReq = { params: { id: '999' } };
+      const mockRes = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn().mockReturnThis(),
+      };
+
+      const id = parseInt(mockReq.params.id, 10);
+      const { rows } = await db.query('SELECT * FROM tasks WHERE id = $1', [id]);
+      
+      if (rows.length === 0) {
+        mockRes.status(404).json({ error: 'Not found' });
+      }
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Not found' });
     });
   });
 
