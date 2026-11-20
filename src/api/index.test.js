@@ -251,6 +251,28 @@ describe('API Endpoints', () => {
       expect(rows).toHaveLength(1);
       expect(rows[0].due_date).toBe('2024-01-01T00:00:00Z');
     });
+
+    test('should ensure active todos always have a priority set', async () => {
+      // This test exposes the bug: an active task with null priority
+      db.query.mockResolvedValueOnce({
+        rows: [
+          { id: 1, title: 'Active Task 1', priority: 'high', completed: false, due_date: null },
+          { id: 2, title: 'Active Task 2', priority: null, completed: false, due_date: null },
+          { id: 3, title: 'Completed Task', priority: null, completed: true, due_date: null }
+        ]
+      });
+
+      const { rows } = await db.query('SELECT * FROM tasks WHERE 1=1 ORDER BY created_at ASC', []);
+      
+      // Filter for active tasks (completed = false)
+      const activeTasks = rows.filter(task => !task.completed);
+      
+      // All active tasks must have a non-null priority
+      activeTasks.forEach(task => {
+        expect(task.priority).not.toBeNull();
+        expect(['low', 'medium', 'high']).toContain(task.priority);
+      });
+    });
   });
 
   describe('PATCH /tasks/:id', () => {
