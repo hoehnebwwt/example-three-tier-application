@@ -10,11 +10,13 @@ export type Task = {
   completed: boolean;
   priority: 'low' | 'medium' | 'high';
   created_at: string;
+  due_date?: string | null;
 };
 
 export type FilterOptions = {
   priority?: 'low' | 'medium' | 'high';
   completed?: boolean;
+  due_date_filter?: 'overdue' | 'today' | 'this_week';
 };
 
 export async function getTasks(filters?: FilterOptions): Promise<Task[]> {
@@ -25,6 +27,9 @@ export async function getTasks(filters?: FilterOptions): Promise<Task[]> {
   if (filters?.completed !== undefined) {
     params.append('completed', String(filters.completed));
   }
+  if (filters?.due_date_filter) {
+    params.append('due_date_filter', filters.due_date_filter);
+  }
   
   const url = params.toString() ? `${API_URL}/tasks?${params.toString()}` : `${API_URL}/tasks`;
   const res = await fetch(url, { cache: 'no-store' });
@@ -34,10 +39,15 @@ export async function getTasks(filters?: FilterOptions): Promise<Task[]> {
 
 export async function createTask(formData: FormData) {
   const title = formData.get('title') as string;
+  const due_date = formData.get('due_date') as string | null;
+  const body: any = { title };
+  if (due_date) {
+    body.due_date = due_date;
+  }
   await fetch(`${API_URL}/tasks`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title }),
+    body: JSON.stringify(body),
   });
   revalidatePath('/');
 }
@@ -56,6 +66,15 @@ export async function updateTaskPriority(id: number, priority: 'low' | 'medium' 
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ priority }),
+  });
+  revalidatePath('/');
+}
+
+export async function updateTaskDueDate(id: number, due_date: string | null) {
+  await fetch(`${API_URL}/tasks/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ due_date }),
   });
   revalidatePath('/');
 }

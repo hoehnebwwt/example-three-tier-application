@@ -20,7 +20,7 @@ describe('API Endpoints', () => {
 
     // Mock GET /tasks endpoint
     app.get('/tasks', async (req, res) => {
-      const { priority, completed } = req.query;
+      const { priority, completed, due_date_filter } = req.query;
       
       let query = 'SELECT * FROM tasks WHERE 1=1';
       const params = [];
@@ -38,6 +38,16 @@ describe('API Endpoints', () => {
         query += ' AND completed = $' + (params.length + 1);
         params.push(isCompleted);
       }
+
+      if (due_date_filter) {
+        if (due_date_filter === 'overdue') {
+          query += ' AND due_date < NOW() AND completed = false';
+        } else if (due_date_filter === 'today') {
+          query += ' AND due_date::date = CURRENT_DATE';
+        } else if (due_date_filter === 'this_week') {
+          query += ' AND due_date >= date_trunc(\'week\', NOW()) AND due_date < date_trunc(\'week\', NOW()) + interval \'7 days\'';
+        }
+      }
       
       query += ' ORDER BY created_at ASC';
       
@@ -47,14 +57,19 @@ describe('API Endpoints', () => {
 
     // Mock POST /tasks endpoint
     app.post('/tasks', async (req, res) => {
-      const { title, priority } = req.body;
+      const { title, priority, due_date } = req.body;
       if (!title || typeof title !== 'string' || !title.trim()) {
         return res.status(400).json({ error: 'title is required' });
       }
+      
+      if (due_date !== undefined && due_date !== null && isNaN(Date.parse(due_date))) {
+        return res.status(400).json({ error: 'due_date must be a valid date' });
+      }
+      
       const taskPriority = priority && ['low', 'medium', 'high'].includes(priority) ? priority : 'medium';
       const { rows } = await db.query(
-        'INSERT INTO tasks (title, priority) VALUES ($1, $2) RETURNING *',
-        [title.trim(), taskPriority]
+        'INSERT INTO tasks (title, priority, due_date) VALUES ($1, $2, $3) RETURNING *',
+        [title.trim(), taskPriority, due_date || null]
       );
       res.status(201).json(rows[0]);
     });
@@ -62,7 +77,7 @@ describe('API Endpoints', () => {
     // Mock PATCH /tasks/:id endpoint
     app.patch('/tasks/:id', async (req, res) => {
       const id = parseInt(req.params.id, 10);
-      const { completed, title, priority } = req.body;
+      const { completed, title, priority, due_date } = req.body;
 
       const { rows } = await db.query('SELECT * FROM tasks WHERE id = $1', [id]);
       if (rows.length === 0) return res.status(404).json({ error: 'Not found' });
@@ -71,10 +86,11 @@ describe('API Endpoints', () => {
       const newCompleted = completed !== undefined ? Boolean(completed) : current.completed;
       const newTitle = title !== undefined ? title.trim() : current.title;
       const newPriority = priority !== undefined && ['low', 'medium', 'high'].includes(priority) ? priority : current.priority;
+      const newDueDate = due_date !== undefined ? (due_date || null) : current.due_date;
 
       const { rows: updated } = await db.query(
-        'UPDATE tasks SET completed = $1, title = $2, priority = $3 WHERE id = $4 RETURNING *',
-        [newCompleted, newTitle, newPriority, id]
+        'UPDATE tasks SET completed = $1, title = $2, priority = $3, due_date = $4 WHERE id = $5 RETURNING *',
+        [newCompleted, newTitle, newPriority, newDueDate, id]
       );
       res.json(updated[0]);
     });
@@ -112,7 +128,7 @@ describe('API Endpoints', () => {
   describe('POST /tasks', () => {
     test('should create a task with valid title', async () => {
       db.query.mockResolvedValueOnce({
-        rows: [{ id: 1, title: 'Test Task', priority: 'medium', completed: false }]
+        rows: [{ id: 1, title: 'Test Task', priority: 'medium', completed: false, due_date: null }]
       });
 
       const mockReq = {
@@ -124,16 +140,60 @@ describe('API Endpoints', () => {
       };
 
       // Simulate the endpoint
-      const { title, priority } = mockReq.body;
+      const { title, priority, due_date } = mockReq.body;
       const taskPriority = priority && ['low', 'medium', 'high'].includes(priority) ? priority : 'medium';
       const { rows } = await db.query(
-        'INSERT INTO tasks (title, priority) VALUES ($1, $2) RETURNING *',
-        [title.trim(), taskPriority]
+        'INSERT INTO tasks (title, priority, due_date) VALUES ($1, $2, $3) RETURNING *',
+        [title.trim(), taskPriority, due_date || null]
       );
       mockRes.status(201).json(rows[0]);
 
       expect(mockRes.status).toHaveBeenCalledWith(201);
-      expect(mockRes.json).toHaveBeenCalledWith({ id: 1, title: 'Test Task', priority: 'medium', completed: false });
+      expect(mockRes.json).toHaveBeenCalledWith({ id: 1, title: 'Test Task', priority: 'medium', completed: false, due_date: null });
+    });
+
+    test('should create a task with due_date', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [{ id: 1, title: 'Test Task', priority: 'medium', completed: false, due_date: '2025-01-15T00:00:00Z' }]
+      });
+
+      const mockReq = {
+        body: { title: 'Test Task', due_date: '2025-01-15T00:00:00Z' }
+      };
+      const mockRes = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn().mockReturnThis(),
+      };
+
+      // Simulate the endpoint
+      const { title, priority, due_date } = mockReq.body;
+      const taskPriority = priority && ['low', 'medium', 'high'].includes(priority) ? priority : 'medium';
+      const { rows } = await db.query(
+        'INSERT INTO tasks (title, priority, due_date) VALUES ($1, $2, $3) RETURNING *',
+        [title.trim(), taskPriority, due_date || null]
+      );
+      mockRes.status(201).json(rows[0]);
+
+      expect(mockRes.status).toHaveBeenCalledWith(201);
+      expect(mockRes.json).toHaveBeenCalledWith({ id: 1, title: 'Test Task', priority: 'medium', completed: false, due_date: '2025-01-15T00:00:00Z' });
+    });
+
+    test('should reject task with invalid due_date', async () => {
+      const mockReq = {
+        body: { title: 'Test Task', due_date: 'invalid-date' }
+      };
+      const mockRes = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn().mockReturnThis(),
+      };
+
+      const { due_date } = mockReq.body;
+      if (due_date !== undefined && due_date !== null && isNaN(Date.parse(due_date))) {
+        mockRes.status(400).json({ error: 'due_date must be a valid date' });
+      }
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({ error: 'due_date must be a valid date' });
     });
 
     test('should reject task without title', async () => {
@@ -159,8 +219,8 @@ describe('API Endpoints', () => {
     test('should return all tasks', async () => {
       db.query.mockResolvedValueOnce({
         rows: [
-          { id: 1, title: 'Task 1', priority: 'high', completed: false },
-          { id: 2, title: 'Task 2', priority: 'low', completed: true }
+          { id: 1, title: 'Task 1', priority: 'high', completed: false, due_date: null },
+          { id: 2, title: 'Task 2', priority: 'low', completed: true, due_date: '2025-01-15T00:00:00Z' }
         ]
       });
 
@@ -172,7 +232,7 @@ describe('API Endpoints', () => {
 
     test('should filter tasks by priority', async () => {
       db.query.mockResolvedValueOnce({
-        rows: [{ id: 1, title: 'High Priority Task', priority: 'high', completed: false }]
+        rows: [{ id: 1, title: 'High Priority Task', priority: 'high', completed: false, due_date: null }]
       });
 
       const { rows } = await db.query('SELECT * FROM tasks WHERE 1=1 AND priority = $1 ORDER BY created_at ASC', ['high']);
@@ -180,22 +240,48 @@ describe('API Endpoints', () => {
       expect(rows).toHaveLength(1);
       expect(rows[0].priority).toBe('high');
     });
+
+    test('should filter tasks by due_date_filter overdue', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [{ id: 1, title: 'Overdue Task', priority: 'high', completed: false, due_date: '2024-01-01T00:00:00Z' }]
+      });
+
+      const { rows } = await db.query('SELECT * FROM tasks WHERE 1=1 AND due_date < NOW() AND completed = false ORDER BY created_at ASC', []);
+      
+      expect(rows).toHaveLength(1);
+      expect(rows[0].due_date).toBe('2024-01-01T00:00:00Z');
+    });
   });
 
   describe('PATCH /tasks/:id', () => {
     test('should update task completion status', async () => {
       db.query
-        .mockResolvedValueOnce({ rows: [{ id: 1, title: 'Task', priority: 'medium', completed: false }] })
-        .mockResolvedValueOnce({ rows: [{ id: 1, title: 'Task', priority: 'medium', completed: true }] });
+        .mockResolvedValueOnce({ rows: [{ id: 1, title: 'Task', priority: 'medium', completed: false, due_date: null }] })
+        .mockResolvedValueOnce({ rows: [{ id: 1, title: 'Task', priority: 'medium', completed: true, due_date: null }] });
 
       const { rows: current } = await db.query('SELECT * FROM tasks WHERE id = $1', [1]);
       const newCompleted = true;
       const { rows: updated } = await db.query(
-        'UPDATE tasks SET completed = $1, title = $2, priority = $3 WHERE id = $4 RETURNING *',
-        [newCompleted, current[0].title, current[0].priority, 1]
+        'UPDATE tasks SET completed = $1, title = $2, priority = $3, due_date = $4 WHERE id = $5 RETURNING *',
+        [newCompleted, current[0].title, current[0].priority, current[0].due_date, 1]
       );
 
       expect(updated[0].completed).toBe(true);
+    });
+
+    test('should update task due_date', async () => {
+      db.query
+        .mockResolvedValueOnce({ rows: [{ id: 1, title: 'Task', priority: 'medium', completed: false, due_date: null }] })
+        .mockResolvedValueOnce({ rows: [{ id: 1, title: 'Task', priority: 'medium', completed: false, due_date: '2025-01-15T00:00:00Z' }] });
+
+      const { rows: current } = await db.query('SELECT * FROM tasks WHERE id = $1', [1]);
+      const newDueDate = '2025-01-15T00:00:00Z';
+      const { rows: updated } = await db.query(
+        'UPDATE tasks SET completed = $1, title = $2, priority = $3, due_date = $4 WHERE id = $5 RETURNING *',
+        [current[0].completed, current[0].title, current[0].priority, newDueDate, 1]
+      );
+
+      expect(updated[0].due_date).toBe('2025-01-15T00:00:00Z');
     });
 
     test('should return 404 for non-existent task', async () => {
@@ -210,7 +296,7 @@ describe('API Endpoints', () => {
   describe('DELETE /tasks/:id', () => {
     test('should delete a task', async () => {
       db.query
-        .mockResolvedValueOnce({ rows: [{ id: 1, title: 'Task to Delete', priority: 'medium', completed: false }] })
+        .mockResolvedValueOnce({ rows: [{ id: 1, title: 'Task to Delete', priority: 'medium', completed: false, due_date: null }] })
         .mockResolvedValueOnce({ rows: [] });
 
       const mockReq = { params: { id: '1' } };
