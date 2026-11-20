@@ -59,3 +59,10 @@ export async function updateTaskPriority(id: number, priority: 'low' | 'medium' 
   });
   revalidatePath('/');
 }
+
+export async function deleteTask(id: number) {
+  await fetch(`${API_URL}/tasks/${id}`, {
+    method: 'DELETE',
+  });
+  revalidatePath('/');
+}
