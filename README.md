@@ -130,3 +130,9 @@ DATABASE_URL=postgres://app:app@localhost:5432/app npx node-pg-migrate down
 ```
 
 When running via Docker Compose the `migrate` service handles this automatically on startup.
+
+## Known Issues
+
+- **Database connection pooling**: The API connection pool may exhaust available connections under high concurrent load. Consider implementing connection pool monitoring and adjusting pool size limits in `src/api/db.js`.
+- **CORS restrictions in production**: The frontend and API are deployed as separate Cloud Run services. Cross-origin requests may fail if CORS headers are not properly configured. Verify CORS settings in `src/api/index.js` match your deployment domain.
+- **Task deletion not implemented**: The API currently supports creating, reading, and updating tasks, but does not provide a DELETE endpoint. Deleting tasks requires direct database access or adding the endpoint to `src/api/index.js`.
